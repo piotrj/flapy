@@ -1,0 +1,28 @@
+#centralWidget, #container, #scrollArea {
+  background: rgb(255, 255, 255);
+}
+
+#entry {
+  background: rgb(255,255,255);
+  border: 1px dashed rgb(218,218,218);
+  border-radius: 5;
+}
+
+#entry:hover {
+  background: rgb(218,218,218);
+  
+}
+
+#username {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+QLabel#message {
+  color: rgb(50, 50, 50);
+}
+
+#sendButton {
+  background: rgb(255,255,255);
+  font-size: 9px;
+}
