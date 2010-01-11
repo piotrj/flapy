@@ -1,5 +1,15 @@
-#centralWidget, #container, #scrollArea {
+#centralWidget, #scrollArea {
   background: rgb(255, 255, 255);
+}
+
+#scrollArea {
+  border: 0;
+}
+
+#title {
+  font-size: 20px;
+  color: rgb(50, 50, 50);
+  font-weight: bo;
 }
 
 #entry {
