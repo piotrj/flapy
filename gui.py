@@ -12,6 +12,58 @@ from PyQt4.QtGui import *
 import sys
 # import flaker
 from flaker import Flaker, Flak, FlakUser
+class TopWidget(QWidget):
+  def __init__(self, parent = None):
+    QWidget.__init__(self, parent)
+    
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+    self.setSizePolicy(sizePolicy)
+    self.horizontalLayoutWidget = QtGui.QWidget(self)
+    self.horizontalLayoutWidget.setMinimumWidth(400)
+    self.horizontalLayoutWidget.setBaseSize(QtCore.QSize(400, 400)) 
+    self.horizontalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 400, 40))
+    self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
+    self.horizontalLayout = QtGui.QHBoxLayout(self.horizontalLayoutWidget)
+    self.horizontalLayout.setObjectName("horizontalLayout")
+    self.horizontalLayout.setSizeConstraint(QtGui.QLayout.SetMinimumSize)
+    self.backButton = QtGui.QPushButton(self.horizontalLayoutWidget)
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+    self.backButton.setSizePolicy(sizePolicy)
+    self.backButton.setObjectName("backButton")
+    self.backButton.setText("<")
+    self.backButton.setFixedWidth(20)
+    self.horizontalLayout.addWidget(self.backButton)
+    self.title = QtGui.QLabel(self.horizontalLayoutWidget)
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Fixed)
+    sizePolicy.setHorizontalStretch(20)
+    self.title.setSizePolicy(sizePolicy)
+    self.title.setObjectName("title")
+    self.title.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignCenter|QtCore.Qt.AlignTop)
+    self.title.setText("FlaPy")
+    self.horizontalLayout.addWidget(self.title)
+    self.reloadButton = QtGui.QPushButton(self.horizontalLayoutWidget)
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+    self.reloadButton.setSizePolicy(sizePolicy)
+    self.reloadButton.setObjectName("reloadButton")
+    self.reloadButton.setText(u"Odśwież")
+    self.reloadButton.adjustSize()
+    self.horizontalLayout.addWidget(self.reloadButton)
+    self.setMinimumWidth(400)
+    self.setMinimumHeight(40)
+    self.adjustSize()
+    
+    self.backButton.hide()
+    
+    self.connect(self.backButton, QtCore.SIGNAL('clicked()'),
+        self.goBack)
+    self.connect(self.reloadButton, QtCore.SIGNAL('clicked()'),
+        self.reload)
+    
+  def goBack(self):
+    self.emit(QtCore.SIGNAL("goBack"))
+  def reload(self):
+    self.emit(QtCore.SIGNAL("reload"))
+    
 class EntryWidget(QWidget):
   def __init__(self, entry, parent = None):
     QWidget.__init__(self, parent)
@@ -36,7 +88,6 @@ class EntryWidget(QWidget):
     self.verticalLayoutWidget.setSizePolicy(sizePolicy)
     self.verticalLayoutWidget.move(70, 10)
     self.verticalLayoutWidget.setMinimumSize(QtCore.QSize(400, 100))
-    # self.verticalLayoutWidget.setSizeIncrement(QtCore.QSize(0, 10))
     self.verticalLayoutWidget.setBaseSize(QtCore.QSize(400, 100)) 
     self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
 
@@ -176,21 +227,21 @@ class Ui_MainWindow(QMainWindow):
         layout.setMargin(0)
         
         
-        self.title = QLabel()
-        self.title.setMinimumWidth(400)
-        self.title.setText("FlaPy")
-        self.title.setObjectName("title")
-        self.title.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignCenter|QtCore.Qt.AlignTop)
-        layout.addWidget(self.title)
+        self.top = TopWidget()
+        self.top.setMinimumWidth(400)
+        self.top.setObjectName("top")
+        self.top.adjustSize()
+        self.connect(self.top, QtCore.SIGNAL("goBack"), self.goBack)
+        # self.connect(self.top, QtCore.SIGNAL("reload"), self.reload)
+        layout.addWidget(self.top)
         
         self.scrollArea = QtGui.QScrollArea()
-        self.scrollArea.setGeometry(QtCore.QRect(0, 10, 400, 500))
+        # self.scrollArea.setGeometry(QtCore.QRect(0, 400, 400, 500))
         layout.addWidget(self.scrollArea)
         
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
-
-        self.createEntryListWidget()
+        
         self.loginWidget = LoginWidget(self.flakerService)
         self.connect(self.loginWidget, QtCore.SIGNAL("loggedon"), self.login)
         self.scrollArea.setWidget(self.loginWidget)
@@ -218,7 +269,7 @@ class Ui_MainWindow(QMainWindow):
       self.entrywidgets = []
 
       # entries = flakerService.getNewEntries("piotrj")
-      entries = self.flakerService.friends("piotrj", 1)
+      entries = self.flakerService.friends(self.flakerService.login)
       
       for entry in entries:
         widget = EntryWidget(entry, self.entryListContainer)
@@ -256,10 +307,13 @@ class Ui_MainWindow(QMainWindow):
     def doubleClick(self, id):
       self.createEntryDetailWidget(id)
       self.entryListContainer.hide()
+      self.scrollArea.takeWidget()
       self.scrollArea.setWidget(self.detailContainer)
+      self.top.backButton.show()
     
     def login(self):
       self.createEntryListWidget()
+      self.scrollArea.takeWidget()
       self.scrollArea.setWidget(self.entryListContainer)
       self.entryListContainer.adjustSize()
       del self.loginWidget
@@ -267,7 +321,14 @@ class Ui_MainWindow(QMainWindow):
       self.centralWidget.adjustSize()
       self.centralWidget.setFixedWidth(self.centralWidget.sizeHint().width()+15)
       self.centralWidget.setMaximumWidth(self.centralWidget.width())
-        
+      
+    def goBack(self):
+      self.scrollArea.setWidget(self.entryListContainer)
+      self.top.backButton.hide()
+      del self.detailwidgets
+      del self.detailContainer
+
+      
 if __name__ == "__main__": 
   app = QApplication(sys.argv) 
   window = Ui_MainWindow() 
