@@ -65,7 +65,7 @@ class TopWidget(QWidget):
     self.emit(QtCore.SIGNAL("reload"))
     
 class EntryWidget(QWidget):
-  def __init__(self, entry, parent = None):
+  def __init__(self, entry, button=True, parent = None):
     QWidget.__init__(self, parent)
 
     self.entry = entry
@@ -87,8 +87,8 @@ class EntryWidget(QWidget):
     sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     self.verticalLayoutWidget.setSizePolicy(sizePolicy)
     self.verticalLayoutWidget.move(70, 10)
-    self.verticalLayoutWidget.setMinimumSize(QtCore.QSize(400, 100))
-    self.verticalLayoutWidget.setBaseSize(QtCore.QSize(400, 100)) 
+    self.verticalLayoutWidget.setMinimumSize(QtCore.QSize(300, 100))
+    self.verticalLayoutWidget.setBaseSize(QtCore.QSize(300, 100)) 
     self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
 
     self.verticalLayout = QVBoxLayout(self.verticalLayoutWidget)
@@ -118,8 +118,6 @@ class EntryWidget(QWidget):
     self.message.adjustSize()
     self.message.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
     # self.message.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
-    
-
 
     self.verticalLayout.addWidget(self.message)
 
@@ -143,6 +141,9 @@ class EntryWidget(QWidget):
         self.button_click)
         
     self.clickStatus = None
+    
+    if not(button):
+      self.pushButton.hide()
         
     
   def mouseReleaseEvent(self, event):
@@ -153,9 +154,8 @@ class EntryWidget(QWidget):
   def mouseDoubleClickEvent(self, event):
     self.clickStatus = "double"
     
-  def button_click(event):
-    # del self.avatar
-    print "click"
+  def button_click(self):
+    self.emit(QtCore.SIGNAL("comment(str)"), self.entry.id)
   
 class LoginWidget(QWidget):
   def __init__(self, flakerService, parent = None):
@@ -209,7 +209,47 @@ class LoginWidget(QWidget):
       self.emit(QtCore.SIGNAL("loggedon"))
     else: 
       self.wrongCredentials.show()
-        
+      
+class WriteWidget(QWidget):
+  def __init__(self, parent=None):
+    QWidget.__init__(self, parent)
+    
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+    self.setSizePolicy(sizePolicy)
+    self.verticalLayoutWidget = QtGui.QWidget(self)
+    self.verticalLayoutWidget.setMinimumWidth(400)
+    self.verticalLayoutWidget.setBaseSize(QtCore.QSize(400, 400)) 
+    self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 400, 40))
+    self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
+    self.verticalLayout = QtGui.QVBoxLayout(self.verticalLayoutWidget)
+    self.verticalLayout.setObjectName("verticalLayout")
+    self.verticalLayout.setSizeConstraint(QtGui.QLayout.SetMinimumSize)
+
+      
+    self.plainTextEdit = QtGui.QPlainTextEdit(self.verticalLayoutWidget)
+    self.plainTextEdit.setObjectName("plainTextEdit")
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+    self.plainTextEdit.setSizePolicy(sizePolicy)
+    self.verticalLayout.addWidget(self.plainTextEdit)
+    self.pushButton = QtGui.QPushButton(self.verticalLayoutWidget)
+    sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+    sizePolicy.setHorizontalStretch(0)
+    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setHeightForWidth(self.pushButton.sizePolicy().hasHeightForWidth())
+    self.pushButton.setSizePolicy(sizePolicy)
+    self.pushButton.setObjectName("pushButton")
+    self.pushButton.setText(u"Wyślij")
+    self.verticalLayout.addWidget(self.pushButton)
+    
+    self.setMinimumWidth(400)
+    self.setMinimumHeight(150)
+    self.adjustSize()
+    
+    self.connect(self.pushButton, QtCore.SIGNAL("clicked()"), self.send)
+    
+  def send(self):
+    self.emit(QtCore.SIGNAL("send(str)"), self.plainTextEdit.toPlainText())
+    
 class Ui_MainWindow(QMainWindow):
     def __init__(self, parent=None, flags=0):
         
@@ -232,11 +272,10 @@ class Ui_MainWindow(QMainWindow):
         self.top.setObjectName("top")
         self.top.adjustSize()
         self.connect(self.top, QtCore.SIGNAL("goBack"), self.goBack)
-        # self.connect(self.top, QtCore.SIGNAL("reload"), self.reload)
+        self.connect(self.top, QtCore.SIGNAL("reload"), self.reload)
         layout.addWidget(self.top)
         
         self.scrollArea = QtGui.QScrollArea()
-        # self.scrollArea.setGeometry(QtCore.QRect(0, 400, 400, 500))
         layout.addWidget(self.scrollArea)
         
         self.scrollArea.setWidgetResizable(True)
@@ -246,8 +285,12 @@ class Ui_MainWindow(QMainWindow):
         self.connect(self.loginWidget, QtCore.SIGNAL("loggedon"), self.login)
         self.scrollArea.setWidget(self.loginWidget)
         
-
+        self.writeWidget = WriteWidget()
+        layout.addWidget(self.writeWidget)
         
+        self.connect(self.writeWidget, QtCore.SIGNAL("send(str)"), self.send)
+        self.writeWidget.hide()
+
         f = open("entry.css", "r")
         stylesheet = f.read()
         f.close
@@ -276,6 +319,7 @@ class Ui_MainWindow(QMainWindow):
         self.entrywidgets.append(widget)
         self.entryListLayout.addWidget(widget)
         self.connect(widget, QtCore.SIGNAL("doubleClick(str)"), self.doubleClick)
+        self.connect(widget, QtCore.SIGNAL("comment(str)"), self.comment)
         
       self.entryListContainer.adjustSize()
 
@@ -295,17 +339,23 @@ class Ui_MainWindow(QMainWindow):
       entry = self.flakerService.show(id)
 
       self.detailwidgets = []
-      widget = EntryWidget(entry, self.detailContainer)
+      widget = EntryWidget(entry, False, self.detailContainer)
       self.detailwidgets.append(widget)
       self.detailLayout.addWidget(widget)
+      
+      self.commentLabel = QLabel()
+      self.commentLabel.setText("Komentarze")
+      
+      self.detailLayout.addWidget(self.commentLabel)
 
       for comment in entry.comments:
-        widget = EntryWidget(comment, self.detailContainer)
+        widget = EntryWidget(comment, False, self.detailContainer)
         self.detailwidgets.append(widget)
         self.detailLayout.addWidget(widget)   
         
     def doubleClick(self, id):
       self.createEntryDetailWidget(id)
+      self.comment(id)
       self.entryListContainer.hide()
       self.scrollArea.takeWidget()
       self.scrollArea.setWidget(self.detailContainer)
@@ -321,12 +371,30 @@ class Ui_MainWindow(QMainWindow):
       self.centralWidget.adjustSize()
       self.centralWidget.setFixedWidth(self.centralWidget.sizeHint().width()+15)
       self.centralWidget.setMaximumWidth(self.centralWidget.width())
+      self.writeWidget.show()
       
     def goBack(self):
       self.scrollArea.setWidget(self.entryListContainer)
       self.top.backButton.hide()
       del self.detailwidgets
       del self.detailContainer
+      
+    def comment(self, id):
+      self.writeWidget.plainTextEdit.clear()
+      self.writeWidget.plainTextEdit.appendPlainText("@"+id)
+      
+    def send(self, msg):
+      # message = self.writeWidget.plainTextEdit.text()
+      self.flakerService.submit(text=unicode(msg))
+      # print msg
+      self.writeWidget.plainTextEdit.clear()
+    
+    def reload(self):
+      self.scrollArea.takeWidget()
+      del self.entryListContainer
+      self.createEntryListWidget()
+      self.scrollArea.setWidget(self.entryListContainer)
+      
 
       
 if __name__ == "__main__": 
